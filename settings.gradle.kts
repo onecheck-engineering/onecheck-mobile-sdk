@@ -15,4 +15,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "onecheck-mobile-sdk"
 //include(":app")
-include(":sdkBuild")
+//include(":sdkBuild")
+include(":oc_vcgps_sdk")

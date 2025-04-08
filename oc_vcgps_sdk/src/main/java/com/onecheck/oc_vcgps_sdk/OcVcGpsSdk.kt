@@ -7,11 +7,16 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
 import androidx.core.content.ContextCompat
+import com.onecheck.oc_vcgps_sdk.consent.ConsentManager
 
 object OcVcGpsSdk {
 
     private var smallIconResId: Int? = null
-    private val TAG:String = "OcVcGpsSdk"
+    private val TAG: String = "OcVcGpsSdk"
+
+    fun startWithConsentCheck(context: Context, iconResId: Int) {
+        ConsentManager.requestConsentIfNeeded(context, iconResId)
+    }
 
     fun startService(context: Context, IconResId: Int){
         smallIconResId = IconResId

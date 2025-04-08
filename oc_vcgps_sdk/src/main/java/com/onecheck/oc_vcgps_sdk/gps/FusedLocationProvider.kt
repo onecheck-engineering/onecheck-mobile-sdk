@@ -24,7 +24,7 @@ class FusedLocationProvider(private val context: Context) {
     // 위치 업데이트 콜백 (요청 시마다 재정의됨)
     private var locationCallback: LocationCallback? = null
 
-    private val TAG: String = "GpsVcService_FusedLocationProvider"
+    private val TAG: String = "GpsVcService_Fused"
 
     /**
      * 위치 권한(FINE 또는 COARSE)이 부여되었는지 확인하는 함수
@@ -52,7 +52,7 @@ class FusedLocationProvider(private val context: Context) {
      * @param onLocationResult 단발성 위치 결과 콜백 함수
      */
 
-    @SuppressLint("MissingPermission") // 👈 이 줄만 추가!
+    @SuppressLint("MissingPermission")
     fun requestCurrentLocation(onLocationResult: (Location?) -> Unit) {
         if (!hasLocationPermission()) {
             Log.e(TAG, "Location permissions are not granted")

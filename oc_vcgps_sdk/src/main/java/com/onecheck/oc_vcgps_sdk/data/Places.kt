@@ -1,6 +1,7 @@
 package com.onecheck.oc_vcgps_sdk.data
 
 import android.util.Log
+import com.onecheck.oc_vcgps_sdk.Log.LogSdk
 
 data class Places(
     val id: Int,
@@ -42,14 +43,14 @@ fun pickBestPlace(
             )
             if (!inside) {
                 // Bounding Box 밖
-                Log.d(TAG, "Store ${place.place_name} is outside BoundingBox → excluded")
+                LogSdk.d(TAG, "Store ${place.place_name} is outside BoundingBox → excluded")
                 return@filter false
             }
         } else {
             // (2) BoundingBox가 없다면, distance + accuracy 활용
             // 예: "place.distance <= userAccuracy + 30" 정도
             if (place.distance > userAccuracy + 30) {
-                Log.d(TAG, "Store ${place.place_name} (distance: ${place.distance}) exceeds accuracy ($userAccuracy) + 30m → excluded")
+                LogSdk.d(TAG, "Store ${place.place_name} (distance: ${place.distance}) exceeds accuracy ($userAccuracy) + 30m → excluded")
                 return@filter false
             }
         }
@@ -73,7 +74,7 @@ fun pickBestPlace(
         if (second.distance - best.distance < 5) {
             // 5m 이하 차이라면? -> 추가 판단
             // 예: "이전 방문 매장"이 best면 유지, 아니면 second도 가능
-            Log.d(TAG, "Distance between best (${best.place_name}) and second (${second.place_name}) is less than 5m")
+            LogSdk.d(TAG, "Distance between best (${best.place_name}) and second (${second.place_name}) is less than 5m")
         }
     }
     return best

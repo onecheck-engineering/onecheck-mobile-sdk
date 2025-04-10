@@ -132,7 +132,8 @@ class GpsVcService : Service() {
             val longitude = location.longitude
             val accuracy = location.accuracy
 
-            Log.d(TAG, "[vcGpsProcess] Current location: $latitude, $longitude (Accuracy: $accuracy)")
+            //Log.d(TAG, "[vcGpsProcess] Current location: $latitude, $longitude (Accuracy: $accuracy)")
+            LogSdk.d(TAG, "[vcGpsProcess] Current location: $latitude, $longitude (Accuracy: $accuracy)")
 
             RetrofitConnection.makeApiCall(
                 call = {VcApi.service.getNearByPlace(latitude, longitude)},

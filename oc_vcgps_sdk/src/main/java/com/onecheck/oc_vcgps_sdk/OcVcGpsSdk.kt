@@ -64,7 +64,7 @@ object OcVcGpsSdk {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
             if (!alarmManager.canScheduleExactAlarms()) {
-                Log.w("OcVcGpsSdk", "Exact alarm permission not granted (SCHEDULE_EXACT_ALARM)")
+                Log.w(TAG, "Exact alarm permission not granted (SCHEDULE_EXACT_ALARM)")
                 return false
             }
         }

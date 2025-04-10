@@ -24,11 +24,11 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
     }
     kotlinOptions {
-        jvmTarget = "17"
+        jvmTarget = "1.8"
     }
 }
 
@@ -37,8 +37,8 @@ dependencies {
     implementation("androidx.core:core-ktx:1.9.0")
     //implementation("androidx.appcompat:appcompat:1.6.1")
     //implementation("com.google.android.material:material:1.12.0")
-    //testImplementation("junit:junit:4.13.2")
-    //androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    testImplementation("junit:junit:4.13.2")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
     //androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
 
     // Location (버전 다운 minSDK 19지원)

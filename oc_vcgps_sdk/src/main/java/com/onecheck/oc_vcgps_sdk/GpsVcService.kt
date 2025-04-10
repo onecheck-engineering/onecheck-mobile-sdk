@@ -15,6 +15,7 @@ import android.os.PowerManager
 import android.os.SystemClock
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import com.onecheck.oc_vcgps_sdk.Log.LogSdk
 import com.onecheck.oc_vcgps_sdk.data.Places
 import com.onecheck.oc_vcgps_sdk.data.pickBestPlace
 import com.onecheck.oc_vcgps_sdk.data.vcGpsLog
@@ -62,7 +63,8 @@ class GpsVcService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        Log.d(TAG, "[OnCreate] GpsVcService Start")
+        Log.d(TAG, "[SDK Service] OnCreate")
+        LogSdk.d(TAG, "[OnCreate] GpsVcService Start")
 
         // 위치 제공자 초기화
         fusedLocationProvider = FusedLocationProvider(this)
@@ -82,11 +84,11 @@ class GpsVcService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.d(TAG, "[onStartCommand] onStartCommand")
+        LogSdk.d(TAG, "[onStartCommand] onStartCommand")
 
         // 시스템 재시작으로 null 인텐트 들어온 경우, 가장 먼저 체크!
         if (intent == null) {
-            Log.w(TAG, "[onStartCommand] Service restarted by system with null intent")
+            LogSdk.d(TAG, "[onStartCommand] Service restarted by system with null intent")
             return START_STICKY
         }
 
@@ -95,7 +97,7 @@ class GpsVcService : Service() {
             val incomingIcon = intent?.getIntExtra("smallIconResId", -1) ?: -1
 
             if (incomingIcon == -1) {
-                Log.e(TAG, "[onStartCommand] Missing smallIconResId. Stopping service.")
+                LogSdk.e(TAG, "[onStartCommand] Missing smallIconResId. Stopping service.")
                 stop()
                 return START_NOT_STICKY
             }
@@ -136,22 +138,22 @@ class GpsVcService : Service() {
                 call = {VcApi.service.getNearByPlace(latitude, longitude)},
                 onSuccess = {nearByPlaces ->
                     if (nearByPlaces.isNullOrEmpty()) {
-                        Log.d(TAG, "[vcGpsProcess] No nearby stores found.")
+                        LogSdk.d(TAG, "[vcGpsProcess] No nearby stores found.")
                         handleVisitFail()
                         return@makeApiCall
                     }
 
                     val bestPlace = pickBestPlace(latitude, longitude, accuracy.toDouble(), nearByPlaces)
                     if (bestPlace == null) {
-                        Log.d(TAG, "[vcGpsProcess] No suitable store matched.")
+                        LogSdk.d(TAG, "[vcGpsProcess] No suitable store matched.")
                         handleVisitFail()
                         return@makeApiCall
                     }
 
-                    Log.d(TAG, "[vcGpsProcess] Store matched: ${bestPlace.place_name}, Distance: ${bestPlace.distance}")
+                    LogSdk.d(TAG, "[vcGpsProcess] Store matched: ${bestPlace.place_name}, Distance: ${bestPlace.distance}")
 
                     if(cacheVisitorPlaceId != 0 && cacheVisitorPlaceId != bestPlace.id){
-                        Log.d(TAG, "[vcGpsProcess] Store changed detected! $cacheVisitorPlaceId → ${bestPlace.id}")
+                        LogSdk.d(TAG, "[vcGpsProcess] Store changed detected! $cacheVisitorPlaceId → ${bestPlace.id}")
                         // 이전 방문 종료 처리 (클라이언트 측 ID 초기화)
                         cacheVisitorId = 0
                         visitFailCount = 0
@@ -176,10 +178,10 @@ class GpsVcService : Service() {
                 dozeReceiver = DozeReceiver()
                 val filter = IntentFilter(PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED)
                 registerReceiver(dozeReceiver, filter)
-                Log.d(TAG, "[setDozeReceiver] DozeReceiver registered")
+                LogSdk.d(TAG, "[setDozeReceiver] DozeReceiver registered")
             }
         } else {
-            Log.d(TAG, "[setDozeReceiver] ozeReceiver only available from API 23 - Skipping registration")
+            LogSdk.d(TAG, "[setDozeReceiver] ozeReceiver only available from API 23 - Skipping registration")
         }
     }
 
@@ -189,9 +191,9 @@ class GpsVcService : Service() {
                 try {
                     unregisterReceiver(it)
                     dozeReceiver = null
-                    Log.d(TAG, "[unsetDozeReceiver] DozeReceiver unregistered")
+                    LogSdk.d(TAG, "[unsetDozeReceiver] DozeReceiver unregistered")
                 } catch (e: Exception) {
-                    Log.e(TAG, "[unsetDozeReceiver] Error while unregistering DozeReceiver\\n$e")
+                    LogSdk.e(TAG, "[unsetDozeReceiver] Error while unregistering DozeReceiver\\n$e")
                 }
             }
         }
@@ -212,7 +214,7 @@ class GpsVcService : Service() {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
-        Log.d(TAG, "onTaskRemoved called = App was swiped or killed")
+        LogSdk.d(TAG, "onTaskRemoved called = App was swiped or killed")
 
         // 여기선 따로 setupAlarmManager() 호출 X
         // 이미 주기적으로 예약되어 있기 때문
@@ -221,7 +223,7 @@ class GpsVcService : Service() {
     }
 
     override fun onDestroy() {
-        Log.d(TAG, "GpsVcService onDestroy - Releasing resources")
+        LogSdk.d(TAG, "GpsVcService onDestroy - Releasing resources")
 
         // 위치 업데이트 중지 (만약 requestLocationUpdates 사용했다면 필요함)
         fusedLocationProvider.stopLocationUpdates()
@@ -288,7 +290,7 @@ class GpsVcService : Service() {
                 triggerAtMillis,
                 alarmIntent
             )
-            Log.d(TAG, "[setupAlarmManager] Alarm set: using setExactAndAllowWhileIdle()용")
+            LogSdk.d(TAG, "[setupAlarmManager] Alarm set: using setExactAndAllowWhileIdle()용")
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
             // API 19~22 → 정확한 알람 설정 (Doze 미지원)
             alarmManager.setExact(
@@ -296,7 +298,7 @@ class GpsVcService : Service() {
                 triggerAtMillis,
                 alarmIntent
             )
-            Log.d(TAG, "[setupAlarmManager] Alarm set: using setExact()")
+            LogSdk.d(TAG, "[setupAlarmManager] Alarm set: using setExact()")
         } else {
             // API 19 미만 → 정확하지 않은 일반 알람 사용
             alarmManager.set(
@@ -304,7 +306,7 @@ class GpsVcService : Service() {
                 triggerAtMillis,
                 alarmIntent
             )
-            Log.d(TAG, "[setupAlarmManager] Alarm set: using set()")
+            LogSdk.d(TAG, "[setupAlarmManager] Alarm set: using set()")
         }
     }
 
@@ -322,9 +324,9 @@ class GpsVcService : Service() {
 
                 val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
                 if (powerManager.isDeviceIdleMode) {
-                    Log.d(TAG, "[DozeReceiver] Device is in Doze mode")
+                    LogSdk.d(TAG, "[DozeReceiver] Device is in Doze mode")
                 } else {
-                    Log.d(TAG, "[DozeReceiver] Device exited Doze mode")
+                    LogSdk.d(TAG, "[DozeReceiver] Device exited Doze mode")
                 }
             }
         }
@@ -332,10 +334,10 @@ class GpsVcService : Service() {
 
     private fun handleVisitFail() {
         visitFailCount++
-        Log.d(TAG, "[handleVisitFail] Visit match failed count: $visitFailCount")
+        LogSdk.d(TAG, "[handleVisitFail] Visit match failed count: $visitFailCount")
         if (visitFailCount >= MAX_FAIL_COUNT) {
-            Log.d(TAG, "[handleVisitFail] 3 consecutive failures → ending visit")
-            Log.d(TAG, "[handleVisitFail] Visitor #$cacheVisitorId ended")
+            LogSdk.d(TAG, "[handleVisitFail] 3 consecutive failures → ending visit")
+            LogSdk.d(TAG, "[handleVisitFail] Visitor #$cacheVisitorId ended")
             cacheVisitorId = 0
             cacheVisitorPlaceId = 0
             visitFailCount = 0
@@ -355,8 +357,8 @@ class GpsVcService : Service() {
 
         RetrofitConnection.makeApiCall(
             call = { VcApi.service.makeVcGpsLog(gpsLog) },
-            onSuccess = { Log.d(TAG, "[sendGpsVisitLog] GPS log saved") },
-            onFailure = { Log.e(TAG, "[Failed to save GPS log] Failed to save GPS log") }
+            onSuccess = { LogSdk.d(TAG, "[sendGpsVisitLog] GPS log saved") },
+            onFailure = { LogSdk.e(TAG, "[Failed to save GPS log] Failed to save GPS log") }
         )
     }
 
@@ -373,13 +375,13 @@ class GpsVcService : Service() {
                 val visitorId = response?.visitor_id ?: 0
 
                 if (visitorId == 0) {
-                    Log.d(TAG, "[sendGpsVisitor] Visitor match failed")
+                    LogSdk.d(TAG, "[sendGpsVisitor] Visitor match failed")
                     handleVisitFail()
                 } else {
                     if (visitorId == cacheVisitorId) {
-                        Log.d(TAG, "[sendGpsVisitor] Visitor remains the same: $visitorId")
+                        LogSdk.d(TAG, "[sendGpsVisitor] Visitor remains the same: $visitorId")
                     } else {
-                        Log.d(TAG, "[sendGpsVisitor] Visitor updated: $visitorId")
+                        LogSdk.d(TAG, "[sendGpsVisitor] Visitor updated: $visitorId")
                         cacheVisitorId = visitorId
                         cacheVisitorPlaceId = placesId
                     }
@@ -389,7 +391,7 @@ class GpsVcService : Service() {
                 setupAlarmManager()
             },
             onFailure = {
-                Log.e(TAG, "[sendGpsVisitor] Failed to save GPS log")
+                LogSdk.e(TAG, "[sendGpsVisitor] Failed to save GPS log")
                 handleVisitFail()
             }
         )

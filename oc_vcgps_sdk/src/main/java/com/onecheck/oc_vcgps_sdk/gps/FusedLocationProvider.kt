@@ -11,6 +11,7 @@ import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
+import com.onecheck.oc_vcgps_sdk.Log.LogSdk
 
 class FusedLocationProvider(private val context: Context) {
 
@@ -55,7 +56,7 @@ class FusedLocationProvider(private val context: Context) {
     @SuppressLint("MissingPermission")
     fun requestCurrentLocation(onLocationResult: (Location?) -> Unit) {
         if (!hasLocationPermission()) {
-            Log.e(TAG, "Location permissions are not granted")
+            LogSdk.e(TAG, "Location permissions are not granted")
             onLocationResult(null)
             return
         }
@@ -64,11 +65,11 @@ class FusedLocationProvider(private val context: Context) {
             fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
                 .addOnSuccessListener { location ->
                     if (location == null) {
-                        Log.e(TAG, "getCurrentLocation returned null")
+                        LogSdk.e(TAG, "getCurrentLocation returned null")
                         onLocationResult(null)
                     } else {
                         var newLocation = location
-                        Log.d(TAG, "newLocation.accuracy ${newLocation.accuracy}")
+                        LogSdk.d(TAG, "newLocation.accuracy ${newLocation.accuracy}")
 
                         // 1. 첫 위치 업데이트 (무조건 반영)
                         if (currentLocation == null) {

@@ -2,6 +2,7 @@ package com.onecheck.oc_vcgps_sdk.consent
 
 import android.content.Context
 import android.util.Log
+import com.onecheck.oc_vcgps_sdk.Log.LogSdk
 import com.onecheck.oc_vcgps_sdk.OcVcGpsSdk
 import com.onecheck.oc_vcgps_sdk.data.ConsentPayload
 import com.onecheck.oc_vcgps_sdk.retrofit.RetrofitConnection
@@ -49,14 +50,14 @@ object ConsentManager {
 
     fun requestConsentIfNeeded(context: Context, iconResId: Int) {
         if (hasConsent(context)) {
-            Log.d(TAG, "Consent already confirmed locally")
+            LogSdk.d(TAG, "Consent already confirmed locally")
 
             checkConsentFromServer(context) { exists ->
                 if (exists) {
-                    Log.d(TAG, "Consent already exists on server - syncing local state only")
+                    LogSdk.d(TAG, "Consent already exists on server - syncing local state only")
                     markConsentSynced(context)
                 } else {
-                    Log.d(TAG, "No consent found on server - attempting to send")
+                    LogSdk.d(TAG, "No consent found on server - attempting to send")
                     sendConsentToServer(context)
                 }
 
@@ -68,7 +69,7 @@ object ConsentManager {
             // 로컬에 동의 기록 없으면 서버에서 확인
             checkConsentFromServer(context) { existsOnServer ->
                 if (existsOnServer) {
-                    Log.d(TAG, "Consent found on server - applying to local state")
+                    LogSdk.d(TAG, "Consent found on server - applying to local state")
                     setConsentSyncedOnly(context)
                     OcVcGpsSdk.startService(context, iconResId)
                 } else {
@@ -98,12 +99,12 @@ object ConsentManager {
         RetrofitConnection.makeApiCall(
             call = {VcApi.service.submitConsent(payload)},
             onSuccess = { success ->
-                Log.d(TAG, "Consent successfully sent to server")
+                LogSdk.d(TAG, "Consent successfully sent to server")
                 onComplete()
             },
             onFailure = { error ->
-                Log.d(TAG, "sendConsentToServer - server error")
-                Log.d(TAG, "${error.printStackTrace()}")
+                LogSdk.d(TAG, "sendConsentToServer - server error")
+                LogSdk.d(TAG, "${error.printStackTrace()}")
             }
         )
     }
@@ -116,8 +117,8 @@ object ConsentManager {
                 callback(isExist ?: false)
             },
             onFailure = { error ->
-                Log.e(TAG, "checkConsentFromServer - error while checking consent status")
-                Log.e(TAG, "${error.printStackTrace()}")
+                LogSdk.e(TAG, "checkConsentFromServer - error while checking consent status")
+                LogSdk.e(TAG, "${error.printStackTrace()}")
                 callback(false)
             }
         )

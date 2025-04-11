@@ -14,11 +14,11 @@ object OcVcGpsSdk {
     private var smallIconResId: Int? = null
     private val TAG: String = "OcVcGpsSdk"
 
-    fun startWithConsentCheck(context: Context, iconResId: Int) {
-        ConsentManager.requestConsentIfNeeded(context, iconResId)
+    fun startWithConsentCheck(context: Context, iconResId: Int, enableResultStatus: Boolean = false) {
+        ConsentManager.requestConsentIfNeeded(context, iconResId, enableResultStatus)
     }
 
-    fun startService(context: Context, IconResId: Int){
+    fun startService(context: Context, IconResId: Int, enableResultStatus: Boolean = false){
         smallIconResId = IconResId
 
         // 권한 체크(Check if all required permissions are granted)
@@ -29,6 +29,7 @@ object OcVcGpsSdk {
 
         val intent = Intent(context, GpsVcService::class.java).apply {
             putExtra("smallIconResId", IconResId)
+            putExtra("enableStatus", enableResultStatus)
         }
 
         // Android 8.0 (API 26) 이상에서는 startForegroundService() 사용(Start foreground service according to Android version)

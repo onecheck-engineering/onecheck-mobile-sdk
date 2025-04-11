@@ -73,7 +73,7 @@ class FusedLocationProvider(private val context: Context) {
 
                         // 1. 첫 위치 업데이트 (무조건 반영)
                         if (currentLocation == null) {
-                            Log.d(TAG, "First location update received: ${newLocation.latitude}, ${newLocation.longitude}")
+                            LogSdk.d(TAG, "First location update received: ${newLocation.latitude}, ${newLocation.longitude}")
                             currentLocation = newLocation
                         } else {
                             // 2. 급격한 위치 점프 감지 (가중치 조정)

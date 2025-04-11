@@ -91,7 +91,7 @@ class GpsVcService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        LogSdk.d(TAG, "[onStartCommand] onStartCommand")
+        LogSdk.d(TAG, "[onStartCommand] onStartCommand Service Start")
 
         // 시스템 재시작으로 null 인텐트 들어온 경우, 가장 먼저 체크!
         if (intent == null) {

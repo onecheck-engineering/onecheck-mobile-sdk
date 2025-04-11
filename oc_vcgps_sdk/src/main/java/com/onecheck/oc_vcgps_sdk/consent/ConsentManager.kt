@@ -48,7 +48,7 @@ object ConsentManager {
             .apply()
     }
 
-    fun requestConsentIfNeeded(context: Context, iconResId: Int) {
+    fun requestConsentIfNeeded(context: Context, iconResId: Int, enableResultStatus: Boolean = false) {
         if (hasConsent(context)) {
             LogSdk.d(TAG, "Consent already confirmed locally")
 
@@ -61,7 +61,7 @@ object ConsentManager {
                     sendConsentToServer(context)
                 }
 
-                OcVcGpsSdk.startService(context, iconResId)
+                OcVcGpsSdk.startService(context, iconResId, enableResultStatus)
             }
 
 
@@ -71,7 +71,7 @@ object ConsentManager {
                 if (existsOnServer) {
                     LogSdk.d(TAG, "Consent found on server - applying to local state")
                     setConsentSyncedOnly(context)
-                    OcVcGpsSdk.startService(context, iconResId)
+                    OcVcGpsSdk.startService(context, iconResId, enableResultStatus)
                 } else {
                     ConsentDialogUtil.showConsentDialog(context) {
                         setConsent(context, true)

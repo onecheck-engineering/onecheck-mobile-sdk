@@ -45,7 +45,7 @@ class GpsVcService : Service() {
     // AlarmManager
     private lateinit var alarmManager: AlarmManager
     private lateinit var alarmIntent: PendingIntent
-    
+
     // 디바이스 정보
     private lateinit var deviceInfo: DeviceInfo
 
@@ -64,7 +64,7 @@ class GpsVcService : Service() {
     private var notificationBuilder: NotificationCompat.Builder? = null
 
 
-    private var isEnabledSendStatus: Boolean = false
+    private var isEnabledSendStatus: Boolean? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -91,12 +91,12 @@ class GpsVcService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        LogSdk.d(TAG, "[onStartCommand] onStartCommand Service Start")
+        LogSdk.d(TAG, "[onStartCommand] onStartCommand")
 
         // 시스템 재시작으로 null 인텐트 들어온 경우, 가장 먼저 체크!
         if (intent == null) {
             LogSdk.d(TAG, "[onStartCommand] Service restarted by system with null intent")
-            if(isEnabledSendStatus) EnableStatusMessage.statusListener?.onStatusChanged("[onStartCommand] Service restarted by system with null intent")
+            if(isEnabledSendStatus!!) EnableStatusMessage.statusListener?.onStatusChanged("[onStartCommand] Service restarted by system with null intent")
             return START_STICKY
         }
 
@@ -106,7 +106,7 @@ class GpsVcService : Service() {
 
             if (incomingIcon == -1) {
                 LogSdk.e(TAG, "[onStartCommand] Missing smallIconResId. Stopping service.")
-                if(isEnabledSendStatus) EnableStatusMessage.statusListener?.onStatusChanged("Missing smallIconResId. Stopping service.")
+                if(isEnabledSendStatus!!) EnableStatusMessage.statusListener?.onStatusChanged("Missing smallIconResId. Stopping service.")
                 stop()
                 return START_NOT_STICKY
             }
@@ -114,7 +114,9 @@ class GpsVcService : Service() {
             iconResId = incomingIcon
         }
 
-        isEnabledSendStatus = intent?.getBooleanExtra("enableStatus", false) ?: false
+        if(isEnabledSendStatus == null){
+            isEnabledSendStatus = intent?.getBooleanExtra("enableStatus", false) ?: false
+        }
 
         if (!wakeLock.isHeld) {
             wakeLock.acquire(SCAN_INTERVAL_MS)
@@ -134,7 +136,7 @@ class GpsVcService : Service() {
         fusedLocationProvider.requestCurrentLocation { location ->
             if (location == null) {
                 LogSdk.e(TAG, "[vcGpsProcess] Failed to get location.")
-                if(isEnabledSendStatus) EnableStatusMessage.statusListener?.onStatusChanged("Missing smallIconResId. Stopping service.")
+                if(isEnabledSendStatus!!) EnableStatusMessage.statusListener?.onStatusChanged("Missing smallIconResId. Stopping service.")
                 handleVisitFail()
                 return@requestCurrentLocation
             }
@@ -146,14 +148,13 @@ class GpsVcService : Service() {
             //Log.d(TAG, "[vcGpsProcess] Current location: $latitude, $longitude (Accuracy: $accuracy)")
             LogSdk.d(TAG, "[vcGpsProcess] Current location: $latitude, $longitude (Accuracy: $accuracy)")
             updateNotification("$latitude, $longitude (Accuracy: $accuracy)")
-            if(isEnabledSendStatus) EnableStatusMessage.statusListener?.onStatusChanged("Current location: $latitude, $longitude (Accuracy: $accuracy)")
+            if(isEnabledSendStatus!!) EnableStatusMessage.statusListener?.onStatusChanged("Current location: $latitude, $longitude (Accuracy: $accuracy)")
 
             RetrofitConnection.makeApiCall(
                 call = {VcApi.service.getNearByPlace(latitude, longitude)},
                 onSuccess = {nearByPlaces ->
                     if (nearByPlaces.isNullOrEmpty()) {
                         LogSdk.d(TAG, "[vcGpsProcess] No nearby stores found.")
-                        if(isEnabledSendStatus) EnableStatusMessage.statusListener?.onStatusChanged("No nearby stores found.")
                         handleVisitFail()
                         return@makeApiCall
                     }
@@ -161,17 +162,15 @@ class GpsVcService : Service() {
                     val bestPlace = pickBestPlace(latitude, longitude, accuracy.toDouble(), nearByPlaces)
                     if (bestPlace == null) {
                         LogSdk.d(TAG, "[vcGpsProcess] No suitable store matched.")
-                        if(isEnabledSendStatus) EnableStatusMessage.statusListener?.onStatusChanged("No suitable store matched.")
+                        if(isEnabledSendStatus!!) EnableStatusMessage.statusListener?.onStatusChanged("No suitable store matched.")
                         handleVisitFail()
                         return@makeApiCall
                     }
 
                     LogSdk.d(TAG, "[vcGpsProcess] Store matched: ${bestPlace.place_name}, Distance: ${bestPlace.distance}")
-                    if(isEnabledSendStatus) EnableStatusMessage.statusListener?.onStatusChanged("Store matched: ${bestPlace.place_name}, Distance: ${bestPlace.distance}")
 
                     if(cacheVisitorPlaceId != 0 && cacheVisitorPlaceId != bestPlace.id){
                         LogSdk.d(TAG, "[vcGpsProcess] Store changed detected! $cacheVisitorPlaceId → ${bestPlace.id}")
-                        if(isEnabledSendStatus) EnableStatusMessage.statusListener?.onStatusChanged("Store changed detected! $cacheVisitorPlaceId → ${bestPlace.id}")
                         // 이전 방문 종료 처리 (클라이언트 측 ID 초기화)
                         cacheVisitorId = 0
                         visitFailCount = 0
@@ -182,7 +181,6 @@ class GpsVcService : Service() {
                 },
                 onFailure = {
                     LogSdk.e(TAG, "[vcGpsProcess] Failed to request store information")
-                    if(isEnabledSendStatus) EnableStatusMessage.statusListener?.onStatusChanged("Failed to request store information")
                     handleVisitFail()
                 }
             )
@@ -366,12 +364,10 @@ class GpsVcService : Service() {
         visitFailCount++
         LogSdk.d(TAG, "[handleVisitFail] Visit match failed count: $visitFailCount")
 
-        if(isEnabledSendStatus) EnableStatusMessage.statusListener?.onStatusChanged("Visit match failed count: $visitFailCount")
+
         if (visitFailCount >= MAX_FAIL_COUNT) {
             LogSdk.d(TAG, "[handleVisitFail] 3 consecutive failures → ending visit")
-            if(isEnabledSendStatus) EnableStatusMessage.statusListener?.onStatusChanged("3 consecutive failures → ending visit")
             LogSdk.d(TAG, "[handleVisitFail] Visitor #$cacheVisitorId ended")
-            if(isEnabledSendStatus) EnableStatusMessage.statusListener?.onStatusChanged("Visitor #$cacheVisitorId ended")
             cacheVisitorId = 0
             cacheVisitorPlaceId = 0
             visitFailCount = 0
@@ -410,16 +406,12 @@ class GpsVcService : Service() {
 
                 if (visitorId == 0) {
                     LogSdk.d(TAG, "[sendGpsVisitor] Visitor match failed")
-                    if(isEnabledSendStatus) EnableStatusMessage.statusListener?.onStatusChanged("Visitor match failed")
-
                     handleVisitFail()
                 } else {
                     if (visitorId == cacheVisitorId) {
                         LogSdk.d(TAG, "[sendGpsVisitor] Visitor remains the same: $visitorId")
-                        if(isEnabledSendStatus) EnableStatusMessage.statusListener?.onStatusChanged("Visitor remains the same: $visitorId")
                     } else {
                         LogSdk.d(TAG, "[sendGpsVisitor] Visitor updated: $visitorId")
-                        if(isEnabledSendStatus) EnableStatusMessage.statusListener?.onStatusChanged("Visitor updated: $visitorId")
                         cacheVisitorId = visitorId
                         cacheVisitorPlaceId = placesId
                     }

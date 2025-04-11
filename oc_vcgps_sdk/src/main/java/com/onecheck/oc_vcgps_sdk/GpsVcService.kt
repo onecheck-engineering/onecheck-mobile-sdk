@@ -36,8 +36,8 @@ class GpsVcService : Service() {
     // GPS 관련 객체
     private lateinit var fusedLocationProvider: FusedLocationProvider
 
-    // 스캔 주기(60초)
-    private val SCAN_INTERVAL_MS = 10 * 6000L
+    // 스캔 주기(20초)(실제론 60초 처리 예정)
+    private val SCAN_INTERVAL_MS = 10 * 2000L
 
     // Wake Lock
     private lateinit var wakeLock: PowerManager.WakeLock

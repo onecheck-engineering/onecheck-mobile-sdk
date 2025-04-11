@@ -148,7 +148,7 @@ class GpsVcService : Service() {
             //Log.d(TAG, "[vcGpsProcess] Current location: $latitude, $longitude (Accuracy: $accuracy)")
             LogSdk.d(TAG, "[vcGpsProcess] Current location: $latitude, $longitude (Accuracy: $accuracy)")
             updateNotification("$latitude, $longitude (Accuracy: $accuracy)")
-            if(isEnabledSendStatus!!) EnableStatusMessage.statusListener?.onStatusChanged("Current location: $latitude, $longitude (Accuracy: $accuracy)")
+            if(isEnabledSendStatus!!) EnableStatusMessage.statusListener?.onStatusChanged("$latitude, $longitude (Accuracy: $accuracy)")
 
             RetrofitConnection.makeApiCall(
                 call = {VcApi.service.getNearByPlace(latitude, longitude)},
@@ -162,7 +162,7 @@ class GpsVcService : Service() {
                     val bestPlace = pickBestPlace(latitude, longitude, accuracy.toDouble(), nearByPlaces)
                     if (bestPlace == null) {
                         LogSdk.d(TAG, "[vcGpsProcess] No suitable store matched.")
-                        if(isEnabledSendStatus!!) EnableStatusMessage.statusListener?.onStatusChanged("No suitable store matched.")
+                        //if(isEnabledSendStatus!!) EnableStatusMessage.statusListener?.onStatusChanged("No suitable store matched.")
                         handleVisitFail()
                         return@makeApiCall
                     }

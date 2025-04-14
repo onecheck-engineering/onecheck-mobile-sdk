@@ -14,10 +14,12 @@ object OcVcGpsSdk {
     private var smallIconResId: Int? = null
     private val TAG: String = "OcVcGpsSdk"
 
+    @JvmStatic
     fun startWithConsentCheck(context: Context, iconResId: Int, enableResultStatus: Boolean = false) {
         ConsentManager.requestConsentIfNeeded(context, iconResId, enableResultStatus)
     }
 
+    @JvmStatic
     fun startService(context: Context, IconResId: Int, enableResultStatus: Boolean = false){
         smallIconResId = IconResId
 
@@ -72,6 +74,4 @@ object OcVcGpsSdk {
 
         return true
     }
-
-
 }

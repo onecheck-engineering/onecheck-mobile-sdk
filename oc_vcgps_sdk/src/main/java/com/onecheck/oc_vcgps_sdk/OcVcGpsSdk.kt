@@ -63,6 +63,13 @@ object OcVcGpsSdk {
             }
         }
 
+        // 백그라운드 위치 권한(Android 10 (API 29) 이상)(항상허용)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
+            ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_BACKGROUND_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            Log.w(TAG, "Background location permission (ACCESS_BACKGROUND_LOCATION) is not granted.")
+            return false
+        }
+
         // 정확한 알람 퍼미션은 별도 체크 (Android 12+)(Additional check for SCHEDULE_EXACT_ALARM (from Android 12))
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
@@ -74,4 +81,6 @@ object OcVcGpsSdk {
 
         return true
     }
+
+
 }

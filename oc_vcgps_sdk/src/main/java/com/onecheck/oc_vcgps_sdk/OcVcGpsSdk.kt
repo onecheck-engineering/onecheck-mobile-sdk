@@ -43,16 +43,21 @@ object OcVcGpsSdk {
     }
 
     // 필수 권한 목록(List of required permissions for the SDK)
-    private val REQUIRED_PERMISSIONS = arrayOf(
-        android.Manifest.permission.ACCESS_FINE_LOCATION,
-        android.Manifest.permission.ACCESS_COARSE_LOCATION,
-        android.Manifest.permission.FOREGROUND_SERVICE,
-        android.Manifest.permission.WAKE_LOCK
-    ).let {
+    private val REQUIRED_PERMISSIONS = buildList {
+        add(android.Manifest.permission.ACCESS_FINE_LOCATION)
+        add(android.Manifest.permission.ACCESS_COARSE_LOCATION)
+        add(android.Manifest.permission.FOREGROUND_SERVICE)
+        add(android.Manifest.permission.WAKE_LOCK)
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            it + android.Manifest.permission.POST_NOTIFICATIONS
-        } else it
-    }
+            add(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            // Android 14(API 34) 이상에서는 FOREGROUND_SERVICE_LOCATION 권한도 필요
+            add(android.Manifest.permission.FOREGROUND_SERVICE_LOCATION)
+        }
+    }.toTypedArray()
 
     // 권한 체크 필수( Check whether all required permissions are granted)
     private fun hasAllRequiredPermissions(context: Context): Boolean {
@@ -63,12 +68,14 @@ object OcVcGpsSdk {
             }
         }
 
+
         // 백그라운드 위치 권한(Android 10 (API 29) 이상)(항상허용)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
             ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_BACKGROUND_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             Log.w(TAG, "Background location permission (ACCESS_BACKGROUND_LOCATION) is not granted.")
             return false
         }
+
 
         // 정확한 알람 퍼미션은 별도 체크 (Android 12+)(Additional check for SCHEDULE_EXACT_ALARM (from Android 12))
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -81,6 +88,4 @@ object OcVcGpsSdk {
 
         return true
     }
-
-
 }

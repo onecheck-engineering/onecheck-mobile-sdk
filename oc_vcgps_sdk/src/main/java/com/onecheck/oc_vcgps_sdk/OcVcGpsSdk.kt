@@ -68,7 +68,6 @@ object OcVcGpsSdk {
             }
         }
 
-
         // 백그라운드 위치 권한(Android 10 (API 29) 이상)(항상허용)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q &&
             ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_BACKGROUND_LOCATION) != PackageManager.PERMISSION_GRANTED) {

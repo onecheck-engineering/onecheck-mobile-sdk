@@ -338,7 +338,7 @@ class GpsVcService : Service() {
 
     private fun createPermanentNotification(message: String, iconResId: Int): Notification {
         val channelId = "onecheck_vcgps_service"
-        val channelName = "onecheck Background GPS"
+        val channelName = "location_tracking_service"
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         // Notification 채널은 SDK 26 이상일 때만 생성

@@ -9,10 +9,14 @@ import android.util.Log
 import androidx.core.content.ContextCompat
 import com.onecheck.oc_vcgps_sdk.consent.ConsentManager
 
+
 object OcVcGpsSdk {
 
     private var smallIconResId: Int? = null
     private val TAG: String = "OcVcGpsSdk"
+
+    private var isServiceRunning = false
+
 
     @JvmStatic
     fun startWithConsentCheck(context: Context, iconResId: Int, enableResultStatus: Boolean = false) {
@@ -21,7 +25,11 @@ object OcVcGpsSdk {
 
     @JvmStatic
     fun startService(context: Context, IconResId: Int, enableResultStatus: Boolean = false){
-        smallIconResId = IconResId
+
+        if(isServiceRunning){
+            // 이미 서비스 실행중인 상태
+            return
+        }
 
         // 권한 체크(Check if all required permissions are granted)
         if(!hasAllRequiredPermissions(context)){
@@ -29,10 +37,12 @@ object OcVcGpsSdk {
             return
         }
 
+        setSmallIconResId(IconResId)
+
         val intent = Intent(context, GpsVcService::class.java).apply {
-            putExtra("smallIconResId", IconResId)
             putExtra("enableStatus", enableResultStatus)
         }
+
 
         // Android 8.0 (API 26) 이상에서는 startForegroundService() 사용(Start foreground service according to Android version)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -40,6 +50,13 @@ object OcVcGpsSdk {
         } else {
             context.startService(intent)
         }
+
+        setServiceFlag(true)
+    }
+
+    @JvmStatic
+    fun setServiceFlag(isRunning:Boolean){
+        isServiceRunning = isRunning
     }
 
     // 필수 권한 목록(List of required permissions for the SDK)
@@ -60,7 +77,7 @@ object OcVcGpsSdk {
     }.toTypedArray()
 
     // 권한 체크 필수( Check whether all required permissions are granted)
-    private fun hasAllRequiredPermissions(context: Context): Boolean {
+    fun hasAllRequiredPermissions(context: Context): Boolean {
         for (permission in REQUIRED_PERMISSIONS) {
             if (ContextCompat.checkSelfPermission(context, permission) != PackageManager.PERMISSION_GRANTED) {
                 Log.w(TAG, "Missing permission: $permission")
@@ -87,4 +104,15 @@ object OcVcGpsSdk {
 
         return true
     }
+
+    @JvmStatic
+    fun setSmallIconResId(resId: Int){
+        smallIconResId = resId
+    }
+
+    @JvmStatic
+    fun getSmallIconResId():Int{
+        return smallIconResId ?: -1
+    }
+
 }

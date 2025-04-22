@@ -8,6 +8,7 @@ object LogSdk {
     fun d(tag: String, message: String) = log("DEBUG", tag, message)
     fun i(tag: String, message: String) = log("INFO", tag, message)
     fun e(tag: String, message: String) = log("ERROR", tag, message)
+    fun w(tag: String, message: String) = log("WARNNING", tag, message)
 
     private fun log(level: String, tag: String, message: String){
         val logSend = LogSend(

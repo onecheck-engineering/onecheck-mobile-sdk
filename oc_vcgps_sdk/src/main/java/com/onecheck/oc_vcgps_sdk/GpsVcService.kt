@@ -23,8 +23,8 @@ import com.onecheck.oc_vcgps_sdk.data.vcGpsVisitor
 import com.onecheck.oc_vcgps_sdk.gps.FusedLocationProvider
 import com.onecheck.oc_vcgps_sdk.retrofit.RetrofitConnection
 import com.onecheck.oc_vcgps_sdk.retrofit.VcApi
-import com.onecheck.oc_vcgps_sdk.util.DeviceInfo
 import com.onecheck.oc_vcgps_sdk.util.EnableStatusMessage
+import com.onecheck.oc_vcgps_sdk.util.OcSdkIdManager
 
 class GpsVcService : Service() {
 
@@ -55,8 +55,6 @@ class GpsVcService : Service() {
     private lateinit var alarmManager: AlarmManager
     private lateinit var alarmIntent: PendingIntent
 
-    // 디바이스 정보
-    private lateinit var deviceInfo: DeviceInfo
 
     // 앱 아이콘 Notification에서 활용
     private var iconResId: Int? = null
@@ -72,6 +70,8 @@ class GpsVcService : Service() {
     // 백그라운드 환경 잘 구동되는지 확인을 위한 임시 사용
     private var notificationBuilder: NotificationCompat.Builder? = null
 
+    private var userFid:String = ""
+
 
     private var isEnabledSendStatus: Boolean? = null
 
@@ -79,14 +79,15 @@ class GpsVcService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+
+        // 사용자 ID 조회
+        userFid = OcSdkIdManager.getFid(this).orEmpty()
+
         Log.d(TAG, "[SDK Service] OnCreate")
-        LogSdk.d(TAG, "[OnCreate] GpsVcService Start")
+        LogSdk.d(userFid, TAG,"[OnCreate] GpsVcService Start")
 
         // 위치 제공자 초기화
         fusedLocationProvider = FusedLocationProvider(this)
-
-        // 디바이스 정보 Util
-        deviceInfo = DeviceInfo(this)
 
         // Wake Lock 초기화
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
@@ -100,28 +101,29 @@ class GpsVcService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        LogSdk.d(TAG, "[onStartCommand] onStartCommand")
+        LogSdk.d(userFid, TAG, "[onStartCommand] onStartCommand")
 
-        if(!restoreIconResId()) return START_NOT_STICKY
-        if(!prepareNotification()) return START_NOT_STICKY
-        if(!checkPermissions()) return START_NOT_STICKY
-
-        // 시스템 재시작으로 null 인텐트 들어온 경우, 가장 먼저 체크!
-        if (intent == null) {
-            LogSdk.d(TAG, "[onStartCommand] Service restarted by system with null intent")
-            if(isEnabledSendStatus!!) EnableStatusMessage.statusListener?.onStatusChanged("[onStartCommand] Service restarted by system with null intent")
-            return START_STICKY
+        if(userFid.isNullOrEmpty()){
+            userFid = OcSdkIdManager.getFid(this).orEmpty()
         }
 
         // 권한 누락 시 크래시 방지 처리
         // 유저가 설정에서 권한을 갑작스럽게 OFF 한 경우를 대비
         // 필수 권한이 없을 경우 서비스 중단 (크래시 방지 목적)
-        if (!OcVcGpsSdk.hasAllRequiredPermissions(applicationContext)) {
-            Log.e(TAG, "[onStartCommand] Required permissions are missing. Stopping the service.")
+        if(!restoreIconResId() || !prepareNotification() || !checkPermissions() || !isNotificationChannelEnabled()){
             stop()
             return START_NOT_STICKY
         }
 
+
+        // 시스템 재시작으로 null 인텐트 들어온 경우, 가장 먼저 체크!
+        if (intent == null) {
+            LogSdk.d(userFid, TAG, "[onStartCommand] Service restarted by system with null intent")
+            if(isEnabledSendStatus!!) EnableStatusMessage.statusListener?.onStatusChanged("[onStartCommand] Service restarted by system with null intent")
+            return START_STICKY
+        }
+
+        // [임시] 테스트용
         if(isEnabledSendStatus == null){
             isEnabledSendStatus = intent?.getBooleanExtra("enableStatus", false) ?: false
         }
@@ -139,8 +141,8 @@ class GpsVcService : Service() {
 
     private fun checkPermissions(): Boolean {
         if (!OcVcGpsSdk.hasAllRequiredPermissions(applicationContext)) {
+            LogSdk.e(userFid, TAG, "[onStartCommand] Required permissions are missing. Stopping the service.")
             Log.e(TAG, "[onStartCommand] Required permissions are missing. Stopping the service.")
-            stop()
             return false
         }
         return true
@@ -151,11 +153,11 @@ class GpsVcService : Service() {
         if (iconResId == null) {
             val incomingIcon = OcVcGpsSdk.getSmallIconResId()
             if (incomingIcon == null || incomingIcon == -1) {
-                LogSdk.e(TAG, "[onStartCommand] Missing smallIconResId. Stopping service.")
+                LogSdk.e(userFid, TAG, "[onStartCommand] Missing smallIconResId. Stopping service.")
+                Log.e(TAG, "[onStartCommand] Missing smallIconResId. Stopping service.")
                 if (isEnabledSendStatus == true) {
                     EnableStatusMessage.statusListener?.onStatusChanged("Missing smallIconResId. Stopping service.")
                 }
-                stop()
                 return false
             }
             iconResId = incomingIcon
@@ -169,12 +171,25 @@ class GpsVcService : Service() {
                 createPermanentNotification("位置サービスが稼働中です", it)
             }
             if (notification == null) {
-                LogSdk.e(TAG, "[onStartCommand] Notification is null after creation attempt. Stopping service.")
-                stop()
+                LogSdk.e(userFid, TAG, "[onStartCommand] Notification is null after creation attempt. Stopping service.")
+                Log.e(TAG, "[onStartCommand] Notification is null after creation attempt. Stopping service.")
                 return false
             }
         }
         return true
+    }
+
+    private fun isNotificationChannelEnabled(): Boolean {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val channel = manager.getNotificationChannel("onecheck_vcgps_service")
+            val isImportance = channel?.importance != NotificationManager.IMPORTANCE_NONE
+            if(!isImportance){
+                LogSdk.e(userFid, TAG, "[onStartCommand] Notification channel is disabled by user. Service cannot continue.")
+            }
+            return isImportance
+        }
+        return true // O 이하 버전은 알림 채널 없음
     }
 
     // GPS 위치 수집 및 처리 메소드
@@ -182,7 +197,7 @@ class GpsVcService : Service() {
 
         // 백그라운드 도중 권한이 제거된 경우 대비
         if (!OcVcGpsSdk.hasAllRequiredPermissions(applicationContext)) {
-            LogSdk.e(TAG, "[vcGpsProcess] Required permissions missing during execution. Stopping process.")
+            LogSdk.e(userFid, TAG, "[vcGpsProcess] Required permissions missing during execution. Stopping process.")
             if (isEnabledSendStatus == true) {
                 EnableStatusMessage.statusListener?.onStatusChanged("Missing permissions during execution. Stopping process.")
             }
@@ -195,7 +210,7 @@ class GpsVcService : Service() {
             fusedLocationProvider.requestCurrentLocation { location ->
                 try {
                     if (location == null) {
-                        LogSdk.e(TAG, "[vcGpsProcess] Failed to get location.")
+                        LogSdk.e(userFid, TAG, "[vcGpsProcess] Failed to get location.")
                         if (isEnabledSendStatus == true) {
                             EnableStatusMessage.statusListener?.onStatusChanged("Failed to get location.")
                         }
@@ -207,7 +222,7 @@ class GpsVcService : Service() {
                     val longitude = location.longitude
                     val accuracy = location.accuracy
 
-                    LogSdk.d(TAG, "[vcGpsProcess] Current location: $latitude, $longitude (Accuracy: $accuracy)")
+                    LogSdk.d(userFid, TAG, "[vcGpsProcess] Current location: $latitude, $longitude (Accuracy: $accuracy)")
                     updateNotification("$latitude, $longitude (Accuracy: $accuracy)")
                     if (isEnabledSendStatus == true) {
                         EnableStatusMessage.statusListener?.onStatusChanged("$latitude, $longitude (Accuracy: $accuracy)")
@@ -217,14 +232,14 @@ class GpsVcService : Service() {
                         call = { VcApi.service.getNearByPlace(latitude, longitude) },
                         onSuccess = { nearByPlaces ->
                             if (nearByPlaces.isNullOrEmpty()) {
-                                LogSdk.d(TAG, "[vcGpsProcess] No nearby stores found.")
+                                LogSdk.d(userFid, TAG, "[vcGpsProcess] No nearby stores found.")
                                 handleVisitFail()
                                 return@makeApiCall
                             }
 
-                            val bestPlace = pickBestPlace(latitude, longitude, accuracy.toDouble(), nearByPlaces)
+                            val bestPlace = pickBestPlace(userFid, latitude, longitude, accuracy.toDouble(), nearByPlaces)
                             if (bestPlace == null) {
-                                LogSdk.d(TAG, "[vcGpsProcess] No suitable store matched.")
+                                LogSdk.d(userFid, TAG, "[vcGpsProcess] No suitable store matched.")
                                 if (isEnabledSendStatus == true) {
                                     EnableStatusMessage.statusListener?.onStatusChanged("No suitable store matched.")
                                 }
@@ -232,10 +247,10 @@ class GpsVcService : Service() {
                                 return@makeApiCall
                             }
 
-                            LogSdk.d(TAG, "[vcGpsProcess] Store matched: ${bestPlace.place_name}, Distance: ${bestPlace.distance}")
+                            LogSdk.d(userFid, TAG, "[vcGpsProcess] Store matched: ${bestPlace.place_name}, Distance: ${bestPlace.distance}")
 
                             if (cacheVisitorPlaceId != 0 && cacheVisitorPlaceId != bestPlace.id) {
-                                LogSdk.d(TAG, "[vcGpsProcess] Store changed detected! $cacheVisitorPlaceId → ${bestPlace.id}")
+                                LogSdk.d(TAG, userFid,"[vcGpsProcess] Store changed detected! $cacheVisitorPlaceId → ${bestPlace.id}")
                                 cacheVisitorId = 0
                                 visitFailCount = 0
                             }
@@ -244,20 +259,20 @@ class GpsVcService : Service() {
                             sendGpsVisitor(bestPlace.id)
                         },
                         onFailure = {
-                            LogSdk.e(TAG, "[vcGpsProcess] Failed to request store information")
+                            LogSdk.e(userFid, TAG,"[vcGpsProcess] Failed to request store information")
                             handleVisitFail()
                         }
                     )
                 } catch (e: SecurityException) {
                     // 권한 변경 중 예외 발생
-                    LogSdk.e(TAG, "[vcGpsProcess] SecurityException occurred - possible permission issue ${e.message}\n${Log.getStackTraceString(e)}")
+                    LogSdk.e(userFid, TAG, "[vcGpsProcess] SecurityException occurred - possible permission issue ${e.message}\n${Log.getStackTraceString(e)}")
                     if (isEnabledSendStatus == true) {
                         EnableStatusMessage.statusListener?.onStatusChanged("SecurityException - permission might be missing")
                     }
                     stop()
                 } catch (e: Exception) {
                     // 기타 예외
-                    LogSdk.e(TAG, "[vcGpsProcess] Unexpected error occurred ${e.message}\n${Log.getStackTraceString(e)}")
+                    LogSdk.e(userFid, TAG,"[vcGpsProcess] Unexpected error occurred ${e.message}\n${Log.getStackTraceString(e)}")
                     if (isEnabledSendStatus == true) {
                         EnableStatusMessage.statusListener?.onStatusChanged("Unexpected error during location processing ${e.message}\n${Log.getStackTraceString(e)}")
                     }
@@ -266,7 +281,7 @@ class GpsVcService : Service() {
             }
         } catch (e: Exception) {
 
-            LogSdk.e(TAG, "[vcGpsProcess] Outer exception occurred ${e.message}\n${Log.getStackTraceString(e)}")
+            LogSdk.e(userFid, TAG,"[vcGpsProcess] Outer exception occurred ${e.message}\n${Log.getStackTraceString(e)}")
             stop()
         }
     }
@@ -277,10 +292,10 @@ class GpsVcService : Service() {
                 dozeReceiver = DozeReceiver()
                 val filter = IntentFilter(PowerManager.ACTION_DEVICE_IDLE_MODE_CHANGED)
                 registerReceiver(dozeReceiver, filter)
-                LogSdk.d(TAG, "[setDozeReceiver] DozeReceiver registered")
+                LogSdk.d(userFid, TAG,"[setDozeReceiver] DozeReceiver registered")
             }
         } else {
-            LogSdk.d(TAG, "[setDozeReceiver] ozeReceiver only available from API 23 - Skipping registration")
+            LogSdk.d(userFid, TAG,"[setDozeReceiver] ozeReceiver only available from API 23 - Skipping registration")
         }
     }
 
@@ -290,9 +305,9 @@ class GpsVcService : Service() {
                 try {
                     unregisterReceiver(it)
                     dozeReceiver = null
-                    LogSdk.d(TAG, "[unsetDozeReceiver] DozeReceiver unregistered")
+                    LogSdk.d(userFid, TAG,"[unsetDozeReceiver] DozeReceiver unregistered")
                 } catch (e: Exception) {
-                    LogSdk.e(TAG, "[unsetDozeReceiver] Error while unregistering DozeReceiver\\n$e")
+                    LogSdk.e(userFid, TAG,"[unsetDozeReceiver] Error while unregistering DozeReceiver\\n$e")
                 }
             }
         }
@@ -306,7 +321,7 @@ class GpsVcService : Service() {
             @Suppress("DEPRECATION")
             stopForeground(true)
         }
-        LogSdk.i(TAG, "SDK Service Stop")
+        LogSdk.i(userFid, TAG,"SDK Service Stop")
         OcVcGpsSdk.setServiceFlag(false)
         cancelAlarmManager()
         stopSelf()
@@ -315,7 +330,7 @@ class GpsVcService : Service() {
 
     override fun onTaskRemoved(rootIntent: Intent?) {
         super.onTaskRemoved(rootIntent)
-        LogSdk.d(TAG, "onTaskRemoved called = App was swiped or killed")
+        LogSdk.d(userFid, TAG,"onTaskRemoved called = App was swiped or killed")
 
         // 여기선 따로 setupAlarmManager() 호출 X
         // 이미 주기적으로 예약되어 있기 때문
@@ -324,7 +339,7 @@ class GpsVcService : Service() {
     }
 
     override fun onDestroy() {
-        LogSdk.d(TAG, "GpsVcService onDestroy - Releasing resources")
+        LogSdk.d(userFid, TAG, "GpsVcService onDestroy - Releasing resources")
 
         // 위치 업데이트 중지 (만약 requestLocationUpdates 사용했다면 필요함)
         fusedLocationProvider.stopLocationUpdates()
@@ -402,7 +417,7 @@ class GpsVcService : Service() {
                 triggerAtMillis,
                 alarmIntent
             )
-            LogSdk.d(TAG, "[setupAlarmManager] Alarm set: using setExactAndAllowWhileIdle()")
+            LogSdk.d(userFid, TAG,"[setupAlarmManager] Alarm set: using setExactAndAllowWhileIdle()")
 
         } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
             // API 19~22 → 정확한 알람 설정 (Doze 미지원)
@@ -411,7 +426,7 @@ class GpsVcService : Service() {
                 triggerAtMillis,
                 alarmIntent
             )
-            LogSdk.d(TAG, "[setupAlarmManager] Alarm set: using setExact()")
+            LogSdk.d(userFid, TAG,"[setupAlarmManager] Alarm set: using setExact()")
         } else {
             // API 19 미만 → 정확하지 않은 일반 알람 사용
             alarmManager.set(
@@ -419,7 +434,7 @@ class GpsVcService : Service() {
                 triggerAtMillis,
                 alarmIntent
             )
-            LogSdk.d(TAG, "[setupAlarmManager] Alarm set: using set()")
+            LogSdk.d(userFid, TAG,"[setupAlarmManager] Alarm set: using set()")
         }
     }
 
@@ -437,11 +452,11 @@ class GpsVcService : Service() {
                 val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
                 if (powerManager.isDeviceIdleMode) {
                     // Doze 모드 진입
-                    LogSdk.d(TAG, "[DozeReceiver] Device is in Doze mode")
+                    LogSdk.d(userFid, TAG, "[DozeReceiver] Device is in Doze mode")
                     currentScanIntervalMs = DOZE_SCAN_INTERVAL_MS
                     setupAlarmManager()
                 } else {
-                    LogSdk.d(TAG, "[DozeReceiver] Device exited Doze mode")
+                    LogSdk.d(userFid, TAG, "[DozeReceiver] Device exited Doze mode")
                     currentScanIntervalMs = NORMAL_SCAN_INTERNAL_MS
                     setupAlarmManager()
                 }
@@ -451,12 +466,12 @@ class GpsVcService : Service() {
 
     private fun handleVisitFail() {
         visitFailCount++
-        LogSdk.d(TAG, "[handleVisitFail] Visit match failed count: $visitFailCount")
+        LogSdk.d(userFid, TAG, "[handleVisitFail] Visit match failed count: $visitFailCount")
 
 
         if (visitFailCount >= MAX_FAIL_COUNT) {
-            LogSdk.d(TAG, "[handleVisitFail] 3 consecutive failures → ending visit")
-            LogSdk.d(TAG, "[handleVisitFail] Visitor #$cacheVisitorId ended")
+            LogSdk.d(userFid, TAG, "[handleVisitFail] 3 consecutive failures → ending visit")
+            LogSdk.d(userFid, TAG,"[handleVisitFail] Visitor #$cacheVisitorId ended")
             cacheVisitorId = 0
             cacheVisitorPlaceId = 0
             visitFailCount = 0
@@ -476,8 +491,8 @@ class GpsVcService : Service() {
 
         RetrofitConnection.makeApiCall(
             call = { VcApi.service.makeVcGpsLog(gpsLog) },
-            onSuccess = { LogSdk.d(TAG, "[sendGpsVisitLog] GPS log saved") },
-            onFailure = { LogSdk.e(TAG, "[Failed to save GPS log] Failed to save GPS log") }
+            onSuccess = { LogSdk.d(userFid, TAG, "[sendGpsVisitLog] GPS log saved") },
+            onFailure = { LogSdk.e(userFid, TAG, "[Failed to save GPS log] Failed to save GPS log") }
         )
     }
 
@@ -485,7 +500,7 @@ class GpsVcService : Service() {
         val request = vcGpsVisitor(
             visitor_id = cacheVisitorId,
             places_id = placesId,
-            vc_device_id_hash = deviceInfo.getHashedDeviceId()
+            fid = userFid
         )
 
         RetrofitConnection.makeApiCall(
@@ -494,13 +509,13 @@ class GpsVcService : Service() {
                 val visitorId = response?.visitor_id ?: 0
 
                 if (visitorId == 0) {
-                    LogSdk.d(TAG, "[sendGpsVisitor] Visitor match failed")
+                    LogSdk.d(userFid, TAG, "[sendGpsVisitor] Visitor match failed")
                     handleVisitFail()
                 } else {
                     if (visitorId == cacheVisitorId) {
-                        LogSdk.d(TAG, "[sendGpsVisitor] Visitor remains the same: $visitorId")
+                        LogSdk.d(userFid, TAG, "[sendGpsVisitor] Visitor remains the same: $visitorId")
                     } else {
-                        LogSdk.d(TAG, "[sendGpsVisitor] Visitor updated: $visitorId")
+                        LogSdk.d(userFid, TAG, "[sendGpsVisitor] Visitor updated: $visitorId")
                         cacheVisitorId = visitorId
                         cacheVisitorPlaceId = placesId
                     }
@@ -509,8 +524,8 @@ class GpsVcService : Service() {
 
                 setupAlarmManager()
             },
-            onFailure = {
-                LogSdk.e(TAG, "[sendGpsVisitor] Failed to save GPS log")
+            onFailure = { errorMsg ->
+                LogSdk.e(userFid, TAG, "$errorMsg")
                 handleVisitFail()
             }
         )

@@ -2,12 +2,15 @@ package com.onecheck.oc_vcgps_sdk.consent
 
 import android.app.AlertDialog
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.widget.Toast
 
 object ConsentDialogUtil {
 
     fun showConsentDialog(context: Context, onAgree: () -> Unit) {
-        AlertDialog.Builder(context)
+        Handler(Looper.getMainLooper()).post {
+            AlertDialog.Builder(context)
 //            .setTitle("위치 정보 수집 동의")
 //            .setMessage(
 //        "본 앱은 사용자의 위치 정보를 바탕으로,\n" +
@@ -38,37 +41,38 @@ object ConsentDialogUtil {
 //                ).show()
 //                dialog.dismiss()
 //            }
-            .setTitle("位置情報の収集に関する同意")
-            .setMessage(
-                "本アプリは、ユーザーの位置情報に基づき、\n" +
-                        "一部地域での活動記録や滞在情報を匿名で収集する機能を含んでいます。\n\n" +
-                        "収集された情報は、位置情報サービスの品質向上、運営の効率分析、\n" +
-                        "今後のサービス改善のためのデータに基づく意思決定などに活用されます。\n\n" +
-                        "[収集項目]\n" +
-                        "• 現在の位置情報（精度：約20〜30m）\n" +
-                        "• ハッシュ化されたデバイス情報（非識別化）\n" +
-                        "• アプリおよびSDKのバージョン情報\n\n" +
-                        "※ 収集は特定の地域または条件に限定して実施され、\n" +
-                        "すべての位置情報が自動的に収集されるわけではありません。\n\n" +
-                        "この情報はアプリがバックグラウンドで動作している場合でも、\n" +
-                        "定期的に収集される可能性があります。\n\n" +
-                        "この収集に同意されない場合でも、\n" +
-                        "アプリの主要な機能は通常通りご利用いただけます。\n\n" +
-                        "上記の内容に同意いただけますか？"
-            )
-            .setPositiveButton("内容を確認して同意する") { dialog, _ ->
-                onAgree() // 同意処理のコールバック
-                dialog.dismiss()
-            }
-            .setNegativeButton("同意しない") { dialog, _ ->
-                Toast.makeText(
-                    context,
-                    "訪問分析機能が無効になります。",
-                    Toast.LENGTH_LONG
-                ).show()
-                dialog.dismiss()
-            }
-            .setCancelable(false)
-            .show()
+                .setTitle("位置情報の収集に関する同意")
+                .setMessage(
+                    "本アプリは、ユーザーの位置情報に基づき、\n" +
+                            "一部地域での活動記録や滞在情報を匿名で収集する機能を含んでいます。\n\n" +
+                            "収集された情報は、位置情報サービスの品質向上、運営の効率分析、\n" +
+                            "今後のサービス改善のためのデータに基づく意思決定などに活用されます。\n\n" +
+                            "[収集項目]\n" +
+                            "• 現在の位置情報（精度：約20〜30m）\n" +
+                            "• ハッシュ化されたデバイス情報（非識別化）\n" +
+                            "• アプリおよびSDKのバージョン情報\n\n" +
+                            "※ 収集は特定の地域または条件に限定して実施され、\n" +
+                            "すべての位置情報が自動的に収集されるわけではありません。\n\n" +
+                            "この情報はアプリがバックグラウンドで動作している場合でも、\n" +
+                            "定期的に収集される可能性があります。\n\n" +
+                            "この収集に同意されない場合でも、\n" +
+                            "アプリの主要な機能は通常通りご利用いただけます。\n\n" +
+                            "上記の内容に同意いただけますか？"
+                )
+                .setPositiveButton("内容を確認して同意する") { dialog, _ ->
+                    onAgree() // 同意処理のコールバック
+                    dialog.dismiss()
+                }
+                .setNegativeButton("同意しない") { dialog, _ ->
+                    Toast.makeText(
+                        context,
+                        "訪問分析機能が無効になります。",
+                        Toast.LENGTH_LONG
+                    ).show()
+                    dialog.dismiss()
+                }
+                .setCancelable(false)
+                .show()
+        }
     }
 }

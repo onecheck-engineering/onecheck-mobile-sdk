@@ -7,7 +7,13 @@ import android.content.pm.PackageManager
 import android.os.Build
 import android.util.Log
 import androidx.core.content.ContextCompat
+import com.onecheck.oc_vcgps_sdk.Log.LogSdk
 import com.onecheck.oc_vcgps_sdk.consent.ConsentManager
+import com.onecheck.oc_vcgps_sdk.data.ConsentPayload
+import com.onecheck.oc_vcgps_sdk.retrofit.RetrofitConnection
+import com.onecheck.oc_vcgps_sdk.retrofit.VcApi
+import com.onecheck.oc_vcgps_sdk.util.OcSdkIdManager
+import com.onecheck.oc_vcgps_sdk.util.Time
 
 
 object OcVcGpsSdk {
@@ -19,32 +25,41 @@ object OcVcGpsSdk {
 
 
     @JvmStatic
-    fun startWithConsentCheck(context: Context, iconResId: Int, enableResultStatus: Boolean = false) {
-        ConsentManager.requestConsentIfNeeded(context, iconResId, enableResultStatus)
+    fun startWithConsentCheck(context: Context, iconResId: Int, fid: String, enableResultStatus: Boolean = false) {
+        ConsentManager.requestConsentIfNeeded(context, iconResId, fid, enableResultStatus)
     }
 
     @JvmStatic
-    fun startService(context: Context, IconResId: Int, enableResultStatus: Boolean = false){
+    fun startService(context: Context, iconResId: Int, fid: String, enableResultStatus: Boolean = false){
 
-        if(isServiceRunning){
-            // 이미 서비스 실행중인 상태
-            return
+        if (isServiceRunning) return
+        // 전달받은 FID를 저장
+        OcSdkIdManager.saveFid(context, fid)
+        checkConsentFromServer(fid){exist ->
+            if(exist){
+                // 서버에 동의 있음 → 그냥 서비스 실행
+                runService(context, iconResId, fid, enableResultStatus)
+            } else {
+                sendConsentToServer(fid){
+                    // 서버에 동의 없음 → 서버에 동의 기록 후 실행
+                    runService(context, iconResId, fid, enableResultStatus)
+                }
+            }
         }
+    }
 
-        // 권한 체크(Check if all required permissions are granted)
-        if(!hasAllRequiredPermissions(context)){
+    fun runService(context: Context, iconResId: Int, fid: String, enableResultStatus: Boolean = false){
+        if (!hasAllRequiredPermissions(context)) {
             Log.e(TAG, "[Permission Missing] Required permissions are not granted. Service will not start.")
             return
         }
 
-        setSmallIconResId(IconResId)
+        setSmallIconResId(iconResId)
 
         val intent = Intent(context, GpsVcService::class.java).apply {
             putExtra("enableStatus", enableResultStatus)
         }
 
-
-        // Android 8.0 (API 26) 이상에서는 startForegroundService() 사용(Start foreground service according to Android version)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             context.startForegroundService(intent)
         } else {
@@ -53,6 +68,7 @@ object OcVcGpsSdk {
 
         setServiceFlag(true)
     }
+
 
     @JvmStatic
     fun setServiceFlag(isRunning:Boolean){
@@ -113,6 +129,41 @@ object OcVcGpsSdk {
     @JvmStatic
     fun getSmallIconResId():Int{
         return smallIconResId ?: -1
+    }
+
+    private fun checkConsentFromServer(fid: String, callback: (Boolean) -> Unit) {
+        RetrofitConnection.makeApiCall(
+            call = { VcApi.service.checkConsentExist(fid) },
+            onSuccess = { isExist ->
+                callback(isExist ?: false)
+            },
+            onFailure = {errorMsg ->
+                LogSdk.e(fid, TAG, "checkConsentFromServer - error while checking consent status")
+                LogSdk.e(fid, TAG, "${errorMsg}")
+                callback(false)
+            }
+        )
+    }
+
+    private fun sendConsentToServer(fid: String, onComplete: () -> Unit = {}) {
+        val payload = ConsentPayload(
+            fid = fid,
+            is_consent_given = "Y",
+            consent_time = Time.getTimeString(),
+            REG_DATE = Time.getTimeString()
+        )
+
+        RetrofitConnection.makeApiCall(
+            call = { VcApi.service.submitConsent(payload) },
+            onSuccess = {
+                LogSdk.d(fid, TAG, "Consent successfully sent to server")
+                onComplete()
+            },
+            onFailure = {errorMsg ->
+                LogSdk.e(fid, TAG, "sendConsentToServer - server error")
+                LogSdk.e(fid, TAG, "${errorMsg}")
+            }
+        )
     }
 
 }

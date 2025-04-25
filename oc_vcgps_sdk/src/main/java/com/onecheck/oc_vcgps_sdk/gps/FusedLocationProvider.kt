@@ -12,6 +12,7 @@ import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.onecheck.oc_vcgps_sdk.Log.LogSdk
+import com.onecheck.oc_vcgps_sdk.util.OcSdkIdManager
 
 class FusedLocationProvider(private val context: Context) {
 
@@ -55,8 +56,9 @@ class FusedLocationProvider(private val context: Context) {
 
     @SuppressLint("MissingPermission")
     fun requestCurrentLocation(onLocationResult: (Location?) -> Unit) {
+        val fid = OcSdkIdManager.getFid(context).orEmpty()
         if (!hasLocationPermission()) {
-            LogSdk.e(TAG, "Location permissions are not granted")
+            LogSdk.e(fid, TAG, "Location permissions are not granted")
             onLocationResult(null)
             return
         }
@@ -65,15 +67,15 @@ class FusedLocationProvider(private val context: Context) {
             fusedLocationClient.getCurrentLocation(Priority.PRIORITY_HIGH_ACCURACY, null)
                 .addOnSuccessListener { location ->
                     if (location == null) {
-                        LogSdk.e(TAG, "getCurrentLocation returned null")
+                        LogSdk.e(fid, TAG, "getCurrentLocation returned null")
                         onLocationResult(null)
                     } else {
                         var newLocation = location
-                        LogSdk.d(TAG, "newLocation.accuracy ${newLocation.accuracy}")
+                        LogSdk.d(fid, TAG, "newLocation.accuracy ${newLocation.accuracy}")
 
                         // 1. 첫 위치 업데이트 (무조건 반영)
                         if (currentLocation == null) {
-                            LogSdk.d(TAG, "First location update received: ${newLocation.latitude}, ${newLocation.longitude}")
+                            LogSdk.d(fid, TAG, "First location update received: ${newLocation.latitude}, ${newLocation.longitude}")
                             currentLocation = newLocation
                         } else {
                             // 2. 급격한 위치 점프 감지 (가중치 조정)

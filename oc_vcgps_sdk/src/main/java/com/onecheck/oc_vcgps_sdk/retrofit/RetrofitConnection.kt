@@ -3,6 +3,7 @@ package com.onecheck.oc_vcgps_sdk.retrofit
 import android.util.Log
 import com.google.gson.GsonBuilder
 import com.onecheck.oc_vcgps_sdk.Log.LogSdk
+import com.onecheck.oc_vcgps_sdk.util.OcSdkIdManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -61,8 +62,7 @@ class RetrofitConnection {
                     }
                 } catch(e: Exception){
                     withContext(Dispatchers.Main){
-                        LogSdk.e("makeApiCall", "${e.printStackTrace()}")
-                        onFailure(Exception("Response unsuccessful"))
+                        onFailure(Exception("${Log.getStackTraceString(e)}"))
                         e.printStackTrace()
                     }
                 }

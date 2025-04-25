@@ -5,13 +5,14 @@ import com.onecheck.oc_vcgps_sdk.retrofit.RetrofitConnection
 import com.onecheck.oc_vcgps_sdk.retrofit.VcApi
 
 object LogSdk {
-    fun d(tag: String, message: String) = log("DEBUG", tag, message)
-    fun i(tag: String, message: String) = log("INFO", tag, message)
-    fun e(tag: String, message: String) = log("ERROR", tag, message)
-    fun w(tag: String, message: String) = log("WARNNING", tag, message)
+    fun d(fid: String, tag: String, message: String) = log(fid, "DEBUG", tag, message)
+    fun i(fid: String, tag: String, message: String) = log(fid,"INFO", tag, message)
+    fun e(fid: String, tag: String, message: String) = log(fid,"ERROR", tag, message)
+    fun w(fid: String, tag: String, message: String) = log(fid,"WARNNING", tag, message)
 
-    private fun log(level: String, tag: String, message: String){
+    private fun log(fid:String, level: String, tag: String, message: String){
         val logSend = LogSend(
+            fid = fid,
             level = level,
             tag = tag,
             message = message

@@ -95,7 +95,7 @@ class FusedLocationProvider(private val context: Context) {
                     }
                 }
         } catch (e: SecurityException) {
-            Log.e(TAG, "getCurrentLocation SecurityException: $e")
+            LogSdk.e(fid, TAG, "getCurrentLocation SecurityException: \n ${Log.getStackTraceString(e)}")
             onLocationResult(null)
         }
     }
@@ -122,8 +122,8 @@ class FusedLocationProvider(private val context: Context) {
     }
 
     /**
-    * 가중치를 적용하여 새로운 위치를 보정합니다.
-    */
+     * 가중치를 적용하여 새로운 위치를 보정합니다.
+     */
     private fun applyWeightedFilter(previousLocation: Location, newLocation: Location, weight: Double): Location {
         val filteredLat = previousLocation.latitude * (1 - weight) + newLocation.latitude * weight
         val filteredLon = previousLocation.longitude * (1 - weight) + newLocation.longitude * weight

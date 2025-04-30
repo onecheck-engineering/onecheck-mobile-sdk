@@ -1,6 +1,5 @@
 package com.onecheck.oc_vcgps_sdk.data
 
-import android.util.Log
 import com.onecheck.oc_vcgps_sdk.Log.LogSdk
 
 data class Places(
